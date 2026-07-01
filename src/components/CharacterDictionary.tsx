@@ -12,17 +12,20 @@ import KanjiOriginVisualizer from './KanjiOriginVisualizer';
 
 interface CharacterDictionaryProps {
   userStats: UserStats;
+  selectedChar: string;
+  setSelectedChar: (char: string) => void;
 }
 
 type SortKey = 'goyuon' | 'stroke' | 'type';
 
 export default function CharacterDictionary({ 
-  userStats
+  userStats,
+  selectedChar,
+  setSelectedChar
 }: CharacterDictionaryProps) {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortKey>('goyuon');
-  const [selectedChar, setSelectedChar] = useState<string>('ア'); // 初期選択
 
   // 音声再生
   const playSound = (char: string) => {

@@ -180,6 +180,51 @@ const playFeverHitSE = () => {
   }
 };
 
+const playCountdownTickSE = () => {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(800, now);
+    
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(now + 0.15);
+  } catch (e) {
+    console.warn("Tick SE failed", e);
+  }
+};
+
+const playCountdownGoSE = () => {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(1000, now);
+    osc.frequency.exponentialRampToValueAtTime(500, now + 0.35);
+    
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(now + 0.35);
+  } catch (e) {
+    console.warn("Go SE failed", e);
+  }
+};
+
 export default function QuizSection({ 
   onBackToMenu, 
   targetChars,
@@ -203,6 +248,9 @@ export default function QuizSection({
   // フィーバーモードのState
   const [isFeverMode, setIsFeverMode] = useState<boolean>(false);
   const [feverTimeLeft, setFeverTimeLeft] = useState<number>(3.0);
+  const [isFeverCountdown, setIsFeverCountdown] = useState<boolean>(false);
+  const [feverCountdownValue, setFeverCountdownValue] = useState<number>(3);
+  const [feverCorrectHit, setFeverCorrectHit] = useState<boolean>(false);
 
   // 回答状況
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -213,6 +261,11 @@ export default function QuizSection({
   
   // クイズ終了
   const [quizFinished, setQuizFinished] = useState<boolean>(false);
+
+  // 各選択肢ごとのターゲット中心座標 (x, y)
+  const [targetCenters, setTargetCenters] = useState<{
+    [option: string]: { x: number; y: number };
+  }>({});
 
   // カタカナの音声再生
   const playSound = (char: string) => {
@@ -242,6 +295,9 @@ export default function QuizSection({
     setPanelHits({});
     setIsFeverMode(false);
     setFeverTimeLeft(3.0);
+    setIsFeverCountdown(false);
+    setFeverCountdownValue(3);
+    setFeverCorrectHit(false);
     
     setQuizStarted(true);
   };
@@ -252,6 +308,50 @@ export default function QuizSection({
       handleStartQuiz(targetChars.length);
     }
   }, [targetChars]);
+
+  // 問題が切り替わったら、ターゲット中心(x, y)を設定する（3問目までは中央、4問目以降はランダム）
+  useEffect(() => {
+    if (questions && questions[currentIndex]) {
+      const currentQuestion = questions[currentIndex];
+      const centers: { [option: string]: { x: number; y: number } } = {};
+      const isRandom = currentIndex >= 3; // 4問目以降
+
+      currentQuestion.options.forEach(option => {
+        if (isRandom) {
+          // 4問目以降は x: 25〜75%、y: 25〜75%の範囲でランダム配置
+          centers[option] = {
+            x: Math.floor(Math.random() * 50) + 25,
+            y: Math.floor(Math.random() * 50) + 25,
+          };
+        } else {
+          // 3問目までは中央 (x: 50%, y: 50%) に固定
+          centers[option] = { x: 50, y: 50 };
+        }
+      });
+      setTargetCenters(centers);
+    }
+  }, [questions, currentIndex]);
+
+  // フィーバータイム開始前のカウントダウンタイマー処理
+  useEffect(() => {
+    let timerId: any;
+    if (isFeverCountdown && feverCountdownValue > 0) {
+      timerId = setTimeout(() => {
+        setFeverCountdownValue((prev) => {
+          if (prev <= 1) {
+            setIsFeverCountdown(false);
+            setIsFeverMode(true);
+            setFeverTimeLeft(3.0);
+            playCountdownGoSE();
+            return 0;
+          }
+          playCountdownTickSE();
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearTimeout(timerId);
+  }, [isFeverCountdown, feverCountdownValue]);
 
   // フィーバーモードのカウントダウンタイマー処理
   useEffect(() => {
@@ -277,38 +377,18 @@ export default function QuizSection({
     setShootMode('select');
     
     const currentQuestion = questions[currentIndex];
-    if (currentQuestion) {
+    if (currentQuestion && !feverCorrectHit) {
       setSessionWrongAnswers(prev => {
         if (!prev.includes(currentQuestion.char)) {
           return [...prev, currentQuestion.char];
         }
         return prev;
       });
-      // 統計データ更新 (タイムアウトは不正解)
+      // 統計データ更新 (一度も正解しなかった場合は不正解)
       updateUserStats(currentQuestion.char, false);
     }
     
     proceedToNext();
-  };
-
-  // フィーバーモード終了＆次へ
-  const endFeverAndProceed = (correct: boolean) => {
-    setIsFeverMode(false);
-    setHasAnswered(true);
-    playFeverHitSE();
-    
-    const currentQuestion = questions[currentIndex];
-    if (currentQuestion) {
-      if (correct) {
-        setScore(prev => prev + 1);
-        updateUserStats(currentQuestion.char, true);
-        playSound(currentQuestion.char);
-      }
-    }
-
-    setTimeout(() => {
-      proceedToNext();
-    }, 450); // 0.45秒後に即進行
   };
 
   // モード切り替え
@@ -344,10 +424,14 @@ export default function QuizSection({
       const percentX = (clickX / rect.width) * 100;
       const percentY = (clickY / rect.height) * 100;
 
+      const center = targetCenters[option] || { x: 50, y: 50 };
+      const distance = Math.sqrt(Math.pow(percentX - center.x, 2) + Math.pow(percentY - center.y, 2));
+      const hitTarget = distance <= 18;
+
       const hit = {
         x: percentX,
         y: percentY,
-        isCritical: true, // フィーバー中は全弾クリティカル
+        isCritical: hitTarget, // フィーバー中は的の近く（18%以内）であればクリティカル
         width: rect.width,
         height: rect.height
       };
@@ -357,11 +441,34 @@ export default function QuizSection({
         [option]: [...(prev[option] || []), hit]
       }));
 
-      playCriticalSE();
+      if (hitTarget) {
+        playCriticalSE();
+      }
 
-      // 丸（正解）に当たったら、即座に次の問題に進む！
-      if (isCorrectOption) {
-        endFeverAndProceed(true);
+      // 丸（正解）に当たったら、その問題は正解扱いにして即座に次の問題へ移行する（3秒タイマーは継続）
+      if (isCorrectOption && hitTarget) {
+        setScore(prev => prev + 1);
+        updateUserStats(currentQuestion.char, true);
+        playSound(currentQuestion.char);
+        playFeverHitSE();
+
+        // 次の問題を準備、弾痕と回答状態を即時クリア
+        setPanelHits({});
+        
+        if (currentIndex + 1 < questions.length) {
+          setCurrentIndex(prev => prev + 1);
+        } else {
+          // もし事前に用意された問題が終了した場合は、その場で1問ランダムに自動追加生成して進む！
+          const more = generateQuizQuestions(1, targetChars);
+          if (more && more.length > 0) {
+            setQuestions(prev => [...prev, ...more]);
+            setCurrentIndex(prev => prev + 1);
+          } else {
+            // 万が一生成できなかった場合はそのまま終了
+            setIsFeverMode(false);
+            setQuizFinished(true);
+          }
+        }
       }
       return;
     }
@@ -388,7 +495,9 @@ export default function QuizSection({
     const percentY = (clickY / rect.height) * 100;
 
     const currentQuestion = questions[currentIndex];
-    const isCritical = (percentX >= 35 && percentX <= 65) && (percentY >= 30 && percentY <= 70);
+    const center = targetCenters[option] || { x: 50, y: 50 };
+    const distance = Math.sqrt(Math.pow(percentX - center.x, 2) + Math.pow(percentY - center.y, 2));
+    const isCritical = distance <= 15; // 距離15%（％空間上の距離）以内をクリティカルとする
 
     const hit = {
       x: percentX,
@@ -461,8 +570,13 @@ export default function QuizSection({
       setAmmo(99); // フィーバー中は∞弾薬
       setShootMode('shoot'); // 強制的に射撃モード
       setPanelHits({});
-      setIsFeverMode(true);
+      setIsFeverMode(false);
       setFeverTimeLeft(3.0);
+      setFeverCorrectHit(false);
+      
+      // 3秒間の開始前カウントダウンを有効にする
+      setIsFeverCountdown(true);
+      setFeverCountdownValue(3);
       playFeverStartSE();
     } else {
       setQuizFinished(true);
@@ -478,6 +592,9 @@ export default function QuizSection({
     setPanelHits({});
     setIsFeverMode(false);
     setFeverTimeLeft(3.0);
+    setIsFeverCountdown(false);
+    setFeverCountdownValue(3);
+    setFeverCorrectHit(false);
 
     if (currentIndex + 1 < questions.length) {
       setCurrentIndex(prev => prev + 1);
@@ -653,6 +770,65 @@ export default function QuizSection({
   return (
     <div className="p-2 max-w-sm mx-auto relative select-none" id="quiz-play">
       
+      {/* フィーバーカウントダウンオーバーレイ */}
+      <AnimatePresence>
+        {isFeverCountdown && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-[#1A1A1A]/92 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center text-center p-4 border border-[#1A1A1A]/10"
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="space-y-3"
+            >
+              {/* 炎エフェクトアイコン */}
+              <div className="flex justify-center gap-1.5">
+                <Flame size={20} className="text-red-500 animate-bounce" />
+                <Flame size={24} className="text-orange-500 animate-pulse" />
+                <Flame size={20} className="text-yellow-500 animate-bounce" />
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-sm font-serif font-black text-white tracking-widest bg-linear-to-r from-red-500 via-orange-500 to-yellow-500 bg-clip-text text-transparent animate-pulse">
+                  🔥 FEVER TIME 🔥
+                </h3>
+                <p className="text-[11px] text-orange-200 font-bold font-serif tracking-wider">
+                  3秒間打ち放題！
+                </p>
+                <p className="text-[8px] text-white/70 font-serif max-w-[200px] mx-auto leading-normal">
+                  制限時間内に正解の「⭕️」を狙い撃て！<br />
+                  何発撃ち込んでも弾切れしません！
+                </p>
+              </div>
+
+              {/* カウントダウン表示 */}
+              <div className="h-12 flex items-center justify-center">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={feverCountdownValue}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: [1.3, 1], opacity: 1 }}
+                    exit={{ scale: 1.6, opacity: 0 }}
+                    transition={{ duration: 0.35 }}
+                    className="text-4xl font-serif font-black text-yellow-400 drop-shadow-[0_2px_10px_rgba(234,179,8,0.6)]"
+                  >
+                    {feverCountdownValue}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              <div className="text-[7px] font-serif uppercase tracking-widest text-white/40 animate-pulse">
+                GET READY...
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
       {/* フィーバーモード特有の炎のエフェクトヘッダー */}
       {isFeverMode && (
         <motion.div 
@@ -823,6 +999,22 @@ export default function QuizSection({
                 : 'border-[#1A1A1A]/10'
           }`}
         >
+          {/* 4問目のランダム化突入時のスペシャルアラート */}
+          {currentIndex === 3 && !hasAnswered && (
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-amber-500/10 border border-amber-500/30 p-2 text-center mb-2.5 rounded-none"
+            >
+              <p className="text-[9px] font-bold text-amber-700 font-serif flex items-center justify-center gap-1">
+                ⚡️ STAGE UP: 4問目に突入！ ⚡️
+              </p>
+              <p className="text-[7.5px] text-amber-800/80 font-serif mt-0.5 leading-normal">
+                ここからは、⭕️や❌の的（ターゲット）の位置が枠内のランダムな場所に変化します！的をよく見て狙い撃ちましょう！
+              </p>
+            </motion.div>
+          )}
+
           {/* 問題タイトル */}
           <div className="text-center mb-2">
             <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-none inline-block mb-1 font-serif uppercase tracking-widest ${
@@ -858,13 +1050,26 @@ export default function QuizSection({
             </div>
           </div>
 
+          {/* ターゲット配置に関する案内 */}
+          <div className="text-center mb-2.5">
+            {currentIndex < 3 ? (
+              <span className="text-[7.5px] text-[#1A1A1A]/40 font-serif">
+                ※ 3問目までは、的（ターゲット）の位置は中央に固定されています。
+              </span>
+            ) : (
+              <span className="text-[8px] text-[#D44D26] font-bold font-serif animate-pulse bg-[#D44D26]/5 px-2 py-0.5 border border-[#D44D26]/10 inline-block">
+                ⚠️ 4問目以降：的（ターゲット）の位置が枠内のランダム位置に変化中！
+              </span>
+            )}
+          </div>
+
           {/* シューティングギミック説明 */}
           {!hasAnswered && (
             <div className="text-center mb-2.5 text-[8px] font-serif uppercase tracking-wider flex items-center justify-center gap-1 bg-[#F3F0E9]/50 py-0.5 border border-[#1A1A1A]/5">
               {isFeverMode ? (
                 <>
                   <Flame size={9} className="text-orange-500 animate-pulse" />
-                  <span className="text-orange-700 font-bold">【フィーバー】丸(正解)を撃ち抜けば即次の問題へ！</span>
+                  <span className="text-orange-700 font-bold">【フィーバー】3秒間打ち放題！丸(正解)を狙い撃て！</span>
                 </>
               ) : shootMode === 'shoot' && ammo > 0 ? (
                 <>
@@ -885,6 +1090,7 @@ export default function QuizSection({
               const isSelected = selectedAnswer === option;
               const isCorrectOption = option === currentQuestion.correctAnswer;
               const hits = panelHits[option] || [];
+              const center = targetCenters[option] || { x: 50, y: 50 };
               
               const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
                 if (shootMode === 'shoot' || isFeverMode) {
@@ -912,90 +1118,106 @@ export default function QuizSection({
 
               return (
                 <button
-                  key={option}
-                  onClick={handleClick}
-                  disabled={hasAnswered}
-                  className={`h-11 rounded-none border font-bold font-serif transition-all relative overflow-hidden flex items-center justify-center bg-white ${borderClass} ${textOpacity} ${cursorStyle} ${
-                    isShootingTargetStyle 
-                      ? isFeverMode 
-                        ? 'hover:border-orange-500 bg-orange-50/20' 
-                        : 'hover:border-[#D44D26] bg-[#D44D26]/2' 
-                      : 'hover:bg-[#F3F0E9]/30'
-                  }`}
-                  id={`btn-option-${option}`}
+                   key={option}
+                   onClick={handleClick}
+                   disabled={hasAnswered}
+                   className={`h-11 rounded-none border font-bold font-serif transition-all relative overflow-hidden flex items-center justify-center bg-white ${borderClass} ${textOpacity} ${cursorStyle} ${
+                     isShootingTargetStyle 
+                       ? isFeverMode 
+                         ? 'hover:border-orange-500 bg-orange-50/20' 
+                         : 'hover:border-[#D44D26] bg-[#D44D26]/2' 
+                       : 'hover:bg-[#F3F0E9]/30'
+                   }`}
+                   id={`btn-option-${option}`}
                 >
-                  {/* 的を模した同心円 */}
-                  {isShootingTargetStyle && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-20">
-                      <div className={`w-8 h-8 rounded-full border ${isFeverMode ? 'border-orange-500' : 'border-[#D44D26]'}`} />
-                      <div className={`w-4 h-4 rounded-full border absolute ${isFeverMode ? 'border-orange-500' : 'border-[#D44D26]'}`} />
-                    </div>
-                  )}
+                   {/* 的を模した同心円 */}
+                   {isShootingTargetStyle && (
+                     <div 
+                       style={{
+                         left: `${center.x}%`,
+                         top: `${center.y}%`,
+                         transform: 'translate(-50%, -50%)',
+                       }}
+                       className="absolute pointer-events-none select-none opacity-20 flex items-center justify-center"
+                     >
+                       <div className={`w-8 h-8 rounded-full border ${isFeverMode ? 'border-orange-500' : 'border-[#D44D26]'}`} />
+                       <div className={`w-4 h-4 rounded-full border absolute ${isFeverMode ? 'border-orange-500' : 'border-[#D44D26]'}`} />
+                     </div>
+                   )}
 
-                  {/* レイヤー1: 裏レイヤー（隠された⭕️❌） */}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-85 select-none pointer-events-none">
-                    {isCorrectOption ? (
-                      <span className="text-[#2E6F40] text-[36px] font-black tracking-normal leading-none select-none font-serif">⭕️</span>
-                    ) : (
-                      <span className="text-[#D44D26] text-[36px] font-black tracking-normal leading-none select-none font-serif">❌</span>
-                    )}
-                  </div>
+                   {/* レイヤー1: 裏レイヤー（隠された⭕️❌） */}
+                   <div 
+                     style={{
+                       left: `${center.x}%`,
+                       top: `${center.y}%`,
+                       transform: 'translate(-50%, -50%)',
+                     }}
+                     className="absolute flex items-center justify-center opacity-85 select-none pointer-events-none"
+                   >
+                     {isCorrectOption ? (
+                       <span className="text-[#2E6F40] text-[36px] font-black tracking-normal leading-none select-none font-serif">⭕️</span>
+                     ) : (
+                       <span className="text-[#D44D26] text-[36px] font-black tracking-normal leading-none select-none font-serif">❌</span>
+                     )}
+                   </div>
 
-                  {/* レイヤー2: カバー（表レイヤー。漢字） */}
-                  <div 
-                    className="absolute inset-0 bg-white flex items-center justify-between px-3 transition-all duration-300 pointer-events-none opacity-100"
-                    style={{
-                      backgroundColor: isShootingTargetStyle ? '#FAF6F0' : '#FFFFFF'
-                    }}
-                  >
-                    <span className="text-[7px] uppercase tracking-widest opacity-25 font-serif select-none">Opt</span>
-                    <span className="text-xl font-serif font-black text-[#1A1A1A]">{option}</span>
-                    <div className="w-2" />
-                  </div>
+                   {/* レイヤー2: カバー（表レイヤー。漢字） */}
+                   <div 
+                     className="absolute inset-0 bg-white flex items-center justify-between px-3 transition-all duration-300 pointer-events-none opacity-100"
+                     style={{
+                       backgroundColor: isShootingTargetStyle ? '#FAF6F0' : '#FFFFFF'
+                     }}
+                   >
+                     <span className="text-[7px] uppercase tracking-widest opacity-25 font-serif select-none">Opt</span>
+                     <span className="text-xl font-serif font-black text-[#1A1A1A]">{option}</span>
+                     <div className="w-2" />
+                   </div>
 
-                  {/* レイヤー3: 弾痕 */}
-                  {hits.map((hit, i) => {
-                    const btnW = hit.width || 120;
-                    const btnH = hit.height || 44;
+                   {/* レイヤー3: 弾痕 */}
+                   {hits.map((hit, i) => {
+                     const btnW = hit.width || 120;
+                     const btnH = hit.height || 44;
+                     const leftOffset = 10 + ((center.x - hit.x) * btnW) / 100 - btnW / 2;
+                     const topOffset = 10 + ((center.y - hit.y) * btnH) / 100 - btnH / 2;
 
-                    return (
-                      <div
-                        key={i}
-                        style={{
-                          left: `${hit.x}%`,
-                          top: `${hit.y}%`,
-                          transform: 'translate(-50%, -50%)',
-                        }}
-                        className={`absolute w-5 h-5 rounded-full border shadow-inner overflow-hidden bg-transparent pointer-events-none select-none z-10 ${
-                          isFeverMode ? 'border-orange-500' : 'border-[#1A1A1A]'
-                        }`}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-tr from-[#1A1A1A]/85 to-transparent opacity-50 mix-blend-multiply" />
-                        
-                        <div 
-                          style={{
-                            position: 'absolute',
-                            width: `${btnW}px`,
-                            height: `${btnH}px`,
-                            left: `-${(hit.x * btnW) / 100 - 10}px`,
-                            top: `-${(hit.y * btnH) / 100 - 10}px`,
-                          }}
-                          className="flex items-center justify-center pointer-events-none select-none"
-                        >
-                          {isCorrectOption ? (
-                            <span className="text-[#2E6F40] text-[36px] font-black leading-none">⭕️</span>
-                          ) : (
-                            <span className="text-[#D44D26] text-[36px] font-black leading-none">❌</span>
-                          )}
-                        </div>
-                        
-                        <div className={`absolute inset-0 border rounded-full scale-90 ${isFeverMode ? 'border-orange-500/70' : 'border-[#1A1A1A]/70'}`} />
-                        {hit.isCritical && (
-                          <div className={`absolute inset-0 animate-ping rounded-full ${isFeverMode ? 'bg-orange-500/25' : 'bg-[#D44D26]/25'}`} />
-                        )}
-                      </div>
-                    );
-                  })}
+                     return (
+                       <div
+                         key={i}
+                         style={{
+                           left: `${hit.x}%`,
+                           top: `${hit.y}%`,
+                           transform: 'translate(-50%, -50%)',
+                         }}
+                         className={`absolute w-5 h-5 rounded-full border shadow-inner overflow-hidden bg-transparent pointer-events-none select-none z-10 ${
+                           isFeverMode ? 'border-orange-500' : 'border-[#1A1A1A]'
+                         }`}
+                       >
+                         <div className="absolute inset-0 bg-gradient-to-tr from-[#1A1A1A]/85 to-transparent opacity-50 mix-blend-multiply" />
+                         
+                         <div 
+                           style={{
+                             position: 'absolute',
+                             width: `${btnW}px`,
+                             height: `${btnH}px`,
+                             left: `${leftOffset}px`,
+                             top: `${topOffset}px`,
+                           }}
+                           className="flex items-center justify-center pointer-events-none select-none"
+                         >
+                           {isCorrectOption ? (
+                             <span className="text-[#2E6F40] text-[36px] font-black leading-none">⭕️</span>
+                           ) : (
+                             <span className="text-[#D44D26] text-[36px] font-black leading-none">❌</span>
+                           )}
+                         </div>
+                         
+                         <div className={`absolute inset-0 border rounded-full scale-90 ${isFeverMode ? 'border-orange-500/70' : 'border-[#1A1A1A]/70'}`} />
+                         {hit.isCritical && (
+                           <div className={`absolute inset-0 animate-ping rounded-full ${isFeverMode ? 'bg-orange-500/25' : 'bg-[#D44D26]/25'}`} />
+                         )}
+                       </div>
+                     );
+                   })}
 
                   {/* レイヤー4: 正解判定後のフル表示マーク */}
                   {hasAnswered && (
