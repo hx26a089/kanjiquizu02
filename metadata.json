@@ -1,0 +1,8 @@
+{
+  "name": "カタカナ漢字なりたちシューティング『デモ』",
+  "description": "カタカナがどの漢字から成り立っているのかを射撃ギミック（穴あけ・透かし覗き見）とともに楽しく解き明かす4択クイズシューティングゲーム。",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
