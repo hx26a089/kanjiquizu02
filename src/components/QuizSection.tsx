@@ -394,20 +394,16 @@ export default function QuizSection({
   const handleFeverTimeout = () => {
     setIsFeverMode(false);
     setShootMode('select');
+    setAmmo(3); // 通常の弾数に戻す
+    setCombo(0); // タイムアウトしたのでコンボを切る
     
-    const currentQuestion = questions[currentIndex];
-    if (currentQuestion && !feverCorrectHit) {
-      setSessionWrongAnswers(prev => {
-        if (!prev.includes(currentQuestion.char)) {
-          return [...prev, currentQuestion.char];
-        }
-        return prev;
-      });
-      // 統計データ更新 (一度も正解しなかった場合は不正解)
-      updateUserStats(currentQuestion.char, false);
-    }
-    
-    proceedToNext();
+    // フィーバー状態のリセット
+    setFeverTimeLeft(3.0);
+    setIsFeverCountdown(false);
+    setFeverCorrectHit(false);
+
+    // note: ここでは proceedToNext() を呼び出さず、その問題に留まります。
+    // ユーザーは通常の回答（または通常射撃）としてこの問題に解答することができます。
   };
 
   // モード切り替え
@@ -430,8 +426,8 @@ export default function QuizSection({
     // ポップアップ位置設定用の座標算出
     const parentRect = e.currentTarget.parentElement?.getBoundingClientRect();
     const btnRect = e.currentTarget.getBoundingClientRect();
-    const clickXRelative = e.nativeEvent.offsetX;
-    const clickYRelative = e.nativeEvent.offsetY;
+    const clickXRelative = e.clientX - btnRect.left;
+    const clickYRelative = e.clientY - btnRect.top;
     
     let relativeX = btnRect.width / 2;
     let relativeY = btnRect.height / 2;
@@ -451,19 +447,23 @@ export default function QuizSection({
 
       // 撃ち抜いた箇所に弾痕追加
       const rect = e.currentTarget.getBoundingClientRect();
-      const clickX = e.nativeEvent.offsetX;
-      const clickY = e.nativeEvent.offsetY;
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
       const percentX = (clickX / rect.width) * 100;
       const percentY = (clickY / rect.height) * 100;
 
       const center = targetCenters[option] || { x: 50, y: 50 };
-      const distance = Math.sqrt(Math.pow(percentX - center.x, 2) + Math.pow(percentY - center.y, 2));
-      const hitTarget = distance <= 18;
+      const centerX = (center.x / 100) * rect.width;
+      const centerY = (center.y / 100) * rect.height;
+      const pixelDistance = Math.sqrt(Math.pow(clickX - centerX, 2) + Math.pow(clickY - centerY, 2));
+
+      // w-14 (56px) の円の半径28pxを基準に、少し広めの32pxを当たり判定とする
+      const hitTarget = pixelDistance <= 32;
 
       const hit = {
         x: percentX,
         y: percentY,
-        isCritical: hitTarget, // フィーバー中は的の近く（18%以内）であればクリティカル
+        isCritical: hitTarget,
         width: rect.width,
         height: rect.height
       };
@@ -478,7 +478,7 @@ export default function QuizSection({
       }
 
       // 丸（正解）に当たったら、その問題は正解扱いにして即座に次の問題へ移行する（3秒タイマーは継続）
-      if (isCorrectOption && hitTarget) {
+      if (isCorrectOption) {
         setScore(prev => prev + 1);
         
         // フィーバー中の連続ヒットでもコンボが加算される！
@@ -488,7 +488,12 @@ export default function QuizSection({
           return next;
         });
 
-        addHitPopup(relativeX, relativeY, `🔥 FEVER HIT! x${combo + 1}`, 'text-orange-600 text-xs font-serif font-black', true);
+        if (hitTarget) {
+          playCriticalSE();
+          addHitPopup(relativeX, relativeY, `🔥 CRITICAL HIT! x${combo + 1}`, 'text-orange-600 text-xs font-serif font-black', true);
+        } else {
+          addHitPopup(relativeX, relativeY, `🔥 FEVER HIT! x${combo + 1}`, 'text-orange-600 text-xs font-serif font-black', true);
+        }
 
         updateUserStats(currentQuestion.char, true);
         playSound(currentQuestion.char);
@@ -503,12 +508,15 @@ export default function QuizSection({
           setIsFeverMode(false);
           setQuizFinished(true);
         }
-      } else if (!isCorrectOption && hitTarget) {
-        // フィーバー中にお手つきした場合は、コンボは切らさずに弾丸ポップアップで楽しさを演出
-        addHitPopup(relativeX, relativeY, '❌ WRONG TARGET!', 'text-red-500 text-[9px] font-serif font-bold');
       } else {
-        // 的に当たらなかった時
-        addHitPopup(relativeX, relativeY, '💨 MISS', 'text-gray-400 text-[8px] font-serif');
+        // 不正解のボタンをクリックした場合
+        if (hitTarget) {
+          // フィーバー中にお手つきした場合は、コンボは切らさずに弾丸ポップアップで楽しさを演出
+          addHitPopup(relativeX, relativeY, '❌ WRONG TARGET!', 'text-red-500 text-[9px] font-serif font-bold');
+        } else {
+          // 的に当たらなかった時
+          addHitPopup(relativeX, relativeY, '💨 MISS', 'text-gray-400 text-[8px] font-serif');
+        }
       }
       return;
     }
@@ -529,15 +537,19 @@ export default function QuizSection({
     setTimeout(() => setScreenShake(false), 200);
 
     const rect = e.currentTarget.getBoundingClientRect();
-    const clickX = e.nativeEvent.offsetX;
-    const clickY = e.nativeEvent.offsetY;
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
     const percentX = (clickX / rect.width) * 100;
     const percentY = (clickY / rect.height) * 100;
 
     const currentQuestion = questions[currentIndex];
     const center = targetCenters[option] || { x: 50, y: 50 };
-    const distance = Math.sqrt(Math.pow(percentX - center.x, 2) + Math.pow(percentY - center.y, 2));
-    const isCritical = distance <= 15; // 距離15%（％空間上の距離）以内をクリティカルとする
+    const centerX = (center.x / 100) * rect.width;
+    const centerY = (center.y / 100) * rect.height;
+    const pixelDistance = Math.sqrt(Math.pow(clickX - centerX, 2) + Math.pow(clickY - centerY, 2));
+
+    // 的(56px)の半径28px内をクリティカルとする（安全のため少し猶予を持たせて26px）
+    const isCritical = pixelDistance <= 26;
 
     const hit = {
       x: percentX,
@@ -692,22 +704,22 @@ export default function QuizSection({
         <motion.div 
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="bg-white rounded-none p-4 border border-[#1A1A1A]/10 shadow-[3px_3px_0px_rgba(26,26,26,0.04)] w-full"
+          className="bg-white rounded-none p-4 border border-[#1A1A1A]/35 shadow-[3px_3px_0px_rgba(26,26,26,0.08)] w-full"
         >
-          <div className="inline-flex p-2 bg-[#D44D26]/10 text-[#D44D26] rounded-none mb-2 border border-[#D44D26]/15">
+          <div className="inline-flex p-2 bg-[#D44D26]/15 text-[#D44D26] rounded-none mb-2 border border-[#D44D26]/30">
             <Award size={24} />
           </div>
           <h2 className="text-base font-bold text-[#1A1A1A] mb-1 font-serif">
             カタカナ成り立ちシューティング
           </h2>
-          <p className="text-[#1A1A1A]/60 text-[10px] mb-4 leading-normal font-serif">
+          <p className="text-[#1A1A1A]/85 text-[10.5px] mb-4 leading-normal font-serif">
             カタカナの成り立ちとなった漢字を当てるクイズゲームです。
             <br />
             シューティングモードでは、選択肢の的（ターゲット）を狙い撃ちましょう！
           </p>
 
           <div className="mb-4">
-            <span className="text-[8px] text-[#1A1A1A]/40 font-serif tracking-widest uppercase block mb-2">
+            <span className="text-[9px] text-[#1A1A1A]/75 font-serif font-bold tracking-widest uppercase block mb-2">
               出題数を選択 / SELECT QUESTIONS
             </span>
             <div className="grid grid-cols-3 gap-1.5 max-w-xs mx-auto">
@@ -715,10 +727,10 @@ export default function QuizSection({
                 <button
                   key={count}
                   onClick={() => setQuestionCount(count)}
-                  className={`py-1.5 text-[9px] font-bold font-serif border transition-all ${
+                  className={`py-1.5 text-[10px] font-bold font-serif border transition-all ${
                     questionCount === count
                       ? 'bg-[#1A1A1A] text-white border-[#1A1A1A]'
-                      : 'bg-white text-[#1A1A1A] border-[#1A1A1A]/20 hover:bg-[#F3F0E9]/30'
+                      : 'bg-white text-[#1A1A1A] border-[#1A1A1A]/45 hover:bg-[#F3F0E9]/30'
                   }`}
                 >
                   {count} 問
@@ -757,29 +769,29 @@ export default function QuizSection({
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-none p-4 border border-[#1A1A1A]/10 shadow-[3px_3px_0px_rgba(26,26,26,0.04)] text-center"
+          className="bg-white rounded-none p-4 border border-[#1A1A1A]/35 shadow-[3px_3px_0px_rgba(26,26,26,0.08)] text-center"
         >
-          <div className="inline-flex p-2.5 bg-[#D44D26]/10 text-[#D44D26] border border-[#D44D26]/15 rounded-none mb-2">
+          <div className="inline-flex p-2.5 bg-[#D44D26]/15 text-[#D44D26] border border-[#D44D26]/30 rounded-none mb-2">
             <Award size={30} className="animate-bounce" />
           </div>
           
           <h2 className="text-base font-bold text-[#1A1A1A] mb-0.5 font-serif">
             作戦終了！
           </h2>
-          <p className="text-[#1A1A1A]/40 text-[8px] mb-3 font-serif tracking-widest uppercase">
+          <p className="text-stone-800 text-[9px] font-bold mb-3 font-serif tracking-widest uppercase">
             {modeTitle.toUpperCase()} RESULTS
           </p>
 
-          <div className="bg-[#F3F0E9] rounded-none p-2.5 border border-[#1A1A1A]/10 mb-3 max-w-xs mx-auto">
-            <div className="grid grid-cols-2 gap-2 divide-x divide-[#1A1A1A]/10">
+          <div className="bg-[#F3F0E9] rounded-none p-2.5 border border-[#1A1A1A]/30 mb-3 max-w-xs mx-auto">
+            <div className="grid grid-cols-2 gap-2 divide-x divide-stone-400">
               <div>
-                <span className="text-[8px] text-[#1A1A1A]/50 block mb-0.5 font-serif uppercase tracking-wider">正解数</span>
+                <span className="text-[9px] text-[#1A1A1A]/80 block mb-0.5 font-serif font-bold uppercase tracking-wider">正解数</span>
                 <span className="text-lg font-black text-[#1A1A1A] font-serif">
-                  {score} <span className="text-[10px] text-[#1A1A1A]/40 font-normal">/ {questionCount}問</span>
+                  {score} <span className="text-[10px] text-stone-600 font-bold">/ {questionCount}問</span>
                 </span>
               </div>
               <div>
-                <span className="text-[8px] text-[#1A1A1A]/50 block mb-0.5 font-serif uppercase tracking-wider">正答率</span>
+                <span className="text-[9px] text-[#1A1A1A]/80 block mb-0.5 font-serif font-bold uppercase tracking-wider">正答率</span>
                 <span className={`text-lg font-black font-serif ${accuracy >= 80 ? 'text-[#2E6F40]' : accuracy >= 50 ? 'text-[#A05C1B]' : 'text-[#D44D26]'}`}>
                   {accuracy}%
                 </span>
@@ -788,12 +800,12 @@ export default function QuizSection({
           </div>
 
           {sessionWrongAnswers.length > 0 ? (
-            <div className="mb-4 text-left bg-[#F3F0E9]/40 rounded-none p-2.5 border border-[#1A1A1A]/10">
-              <h3 className="text-[10px] font-bold text-[#D44D26] mb-1 flex items-center gap-1 font-serif">
+            <div className="mb-4 text-left bg-stone-50 rounded-none p-2.5 border border-[#1A1A1A]/30">
+              <h3 className="text-[10.5px] font-bold text-[#D44D26] mb-1 flex items-center gap-1 font-serif">
                 <span className="w-3 h-3 bg-[#D44D26] text-white rounded-none flex items-center justify-center text-[8px] font-black">X</span>
                 間違えた文字（{sessionWrongAnswers.length}文字）
               </h3>
-              <p className="text-[10px] text-[#1A1A1A]/60 mb-2 leading-tight font-serif">
+              <p className="text-[10px] text-[#1A1A1A]/85 mb-2 leading-tight font-serif font-medium">
                 成り立ち漢字をもう一度復習しましょう！タップで発音が再生されます。
               </p>
               <div className="flex flex-wrap gap-1">
@@ -802,24 +814,24 @@ export default function QuizSection({
                   return (
                     <div 
                       key={char} 
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-white rounded-none border border-[#1A1A1A]/10 text-[10px] font-bold shadow-2xs hover:bg-[#F3F0E9] transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-white rounded-none border border-[#1A1A1A]/35 text-[10px] font-bold shadow-2xs hover:bg-[#F3F0E9] transition-all cursor-pointer"
                       onClick={() => playSound(char)}
                     >
                       <span className="text-[#D44D26] font-black font-serif">{char}</span>
-                      <span className="text-[#1A1A1A]/30 font-serif">←</span>
-                      <span className="text-[#1A1A1A]/80 font-serif">{data?.kanji}</span>
-                      <Volume2 size={8} className="text-[#1A1A1A]/30" />
+                      <span className="text-stone-500 font-serif">←</span>
+                      <span className="text-[#1A1A1A] font-serif font-bold">{data?.kanji}</span>
+                      <Volume2 size={8} className="text-stone-500" />
                     </div>
                   );
                 })}
               </div>
             </div>
           ) : (
-            <div className="mb-4 bg-[#2E6F40]/10 rounded-none p-3 border border-[#2E6F40]/25">
+            <div className="mb-4 bg-[#2E6F40]/15 rounded-none p-3 border border-[#2E6F40]/40">
               <h3 className="text-[11px] font-bold text-[#2E6F40] mb-0.5 flex items-center justify-center gap-1 font-serif">
                 🎉 パーフェクト！
               </h3>
-              <p className="text-[10px] text-[#2E6F40]/80 leading-normal font-serif">
+              <p className="text-[10px] text-[#2E6F40] font-bold leading-normal font-serif">
                 すべての成り立ちを完全にマスターしました！
               </p>
             </div>
@@ -936,11 +948,11 @@ export default function QuizSection({
 
       {/* 進行状況バー */}
       <div className="flex justify-between items-center mb-1 px-0.5">
-        <span className="text-[8px] font-bold text-[#1A1A1A]/40 font-serif uppercase tracking-widest">
+        <span className="text-[9px] font-bold text-stone-800 font-serif uppercase tracking-widest">
           Q {currentIndex + 1} / {questions.length}
         </span>
         <div className="flex items-center gap-1.5">
-          <div className="flex items-center gap-1 bg-white text-[#1A1A1A]/70 text-[8px] font-bold px-1.5 py-0.5 rounded-none border border-[#1A1A1A]/10 font-serif">
+          <div className="flex items-center gap-1 bg-white text-stone-900 text-[9px] font-bold px-1.5 py-0.5 rounded-none border border-[#1A1A1A]/45 font-serif">
             <span>正答: {score}</span>
           </div>
           {combo >= 2 && (
@@ -956,7 +968,7 @@ export default function QuizSection({
           )}
         </div>
       </div>
-      <div className="w-full h-0.5 bg-[#1A1A1A]/10 overflow-hidden mb-2">
+      <div className="w-full h-1 bg-[#1A1A1A]/30 overflow-hidden mb-2">
         <div 
           className={`h-full transition-all duration-300 ${isFeverMode ? 'bg-orange-500' : 'bg-[#D44D26]'}`}
           style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
@@ -1093,12 +1105,12 @@ export default function QuizSection({
           } : { opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -15 }}
           transition={{ duration: 0.15 }}
-          className={`bg-white rounded-none p-3 border shadow-[3px_3px_0px_rgba(26,26,26,0.02)] transition-all duration-300 ${
+          className={`bg-white rounded-none p-3.5 border-2 shadow-[3px_3px_0px_rgba(26,26,26,0.06)] transition-all duration-300 ${
             isFeverMode 
-              ? 'bg-red-50/40 border-red-500/30 ring-2 ring-red-500/20' 
+              ? 'bg-red-50/50 border-red-500 ring-2 ring-red-500/30' 
               : shootMode === 'shoot' && !hasAnswered 
-                ? 'bg-[#D44D26]/2 border-[#D44D26]/20' 
-                : 'border-[#1A1A1A]/10'
+                ? 'bg-[#D44D26]/5 border-[#D44D26]' 
+                : 'border-[#1A1A1A]/45'
           }`}
         >
           {/* 4問目のランダム化突入時のスペシャルアラート */}
@@ -1136,15 +1148,15 @@ export default function QuizSection({
 
           {/* 出題用の文字 of ビジュアル表示 */}
           <div className="flex justify-center items-center gap-2 mb-3">
-            <div className={`relative flex justify-center items-center w-20 h-20 bg-white rounded-none border shadow-sm ${
-              isFeverMode ? 'border-orange-500 ring-2 ring-orange-500/20' : 'border-[#1A1A1A]/10'
+            <div className={`relative flex justify-center items-center w-20 h-20 bg-white rounded-none border-2 shadow-sm ${
+              isFeverMode ? 'border-orange-500 ring-2 ring-orange-500/30' : 'border-[#1A1A1A]/45'
             }`}>
               <span className={`text-4xl font-serif font-black ${isFeverMode ? 'text-orange-600' : 'text-[#1A1A1A]'}`}>
                 {currentQuestion.char}
               </span>
               <button 
                 onClick={() => playSound(currentQuestion.char)}
-                className="absolute bottom-1 right-1 p-1 bg-white hover:bg-[#F3F0E9] active:scale-95 text-[#1A1A1A]/40 hover:text-[#1A1A1A] rounded-none border border-[#1A1A1A]/20 shadow-xs transition-all cursor-pointer"
+                className="absolute bottom-1 right-1 p-1 bg-white hover:bg-[#F3F0E9] active:scale-95 text-[#1A1A1A] rounded-none border border-[#1A1A1A]/45 shadow-xs transition-all cursor-pointer"
                 title="音声を再生"
               >
                 <Volume2 size={12} />
@@ -1155,11 +1167,11 @@ export default function QuizSection({
           {/* ターゲット配置に関する案内 */}
           <div className="text-center mb-2.5">
             {currentIndex < 3 ? (
-              <span className="text-[7.5px] text-[#1A1A1A]/40 font-serif">
+              <span className="text-[8.5px] text-stone-850 font-semibold font-serif">
                 ※ 3問目までは、的（ターゲット）の位置は中央に固定されています。
               </span>
             ) : (
-              <span className="text-[8px] text-[#D44D26] font-bold font-serif animate-pulse bg-[#D44D26]/5 px-2 py-0.5 border border-[#D44D26]/10 inline-block">
+              <span className="text-[9px] text-[#D44D26] font-bold font-serif animate-pulse bg-orange-50 px-2 py-0.5 border border-[#D44D26]/60 inline-block">
                 ⚠️ 4問目以降：的（ターゲット）の位置が枠内のランダム位置に変化中！
               </span>
             )}
@@ -1167,20 +1179,20 @@ export default function QuizSection({
 
           {/* シューティングギミック説明 */}
           {!hasAnswered && (
-            <div className="text-center mb-2.5 text-[8px] font-serif uppercase tracking-wider flex items-center justify-center gap-1 bg-[#F3F0E9]/50 py-0.5 border border-[#1A1A1A]/5">
+            <div className="text-center mb-2.5 text-[10px] font-serif uppercase tracking-wider flex items-center justify-center gap-1 bg-[#F3F0E9] py-1.5 px-2 border-2 border-[#1A1A1A]/45">
               {isFeverMode ? (
                 <>
-                  <Flame size={9} className="text-orange-500 animate-pulse" />
-                  <span className="text-orange-700 font-bold">【フィーバー】3秒間打ち放題！丸(正解)を狙い撃て！</span>
+                  <Flame size={11} className="text-orange-600 animate-pulse" />
+                  <span className="text-orange-800 font-black">【フィーバー】3秒間打ち放題！丸(正解)を狙い撃て！</span>
                 </>
               ) : shootMode === 'shoot' && ammo > 0 ? (
                 <>
-                  <Target size={9} className="text-[#D44D26] animate-pulse" />
-                  <span>漢字パネルをクリックして射撃！ 裏が透けて見えます！</span>
+                  <Target size={11} className="text-[#D44D26] animate-pulse" />
+                  <span className="text-stone-900 font-bold">漢字パネルをクリックして射撃！ 裏が透けて見えます！</span>
                 </>
               ) : (
                 <>
-                  <span>👆 正しいと思う漢字を選択して回答しましょう！</span>
+                  <span className="text-stone-900 font-bold">👆 正しいと思う漢字を選択して回答しましょう！</span>
                 </>
               )}
             </div>
@@ -1202,17 +1214,17 @@ export default function QuizSection({
                 }
               };
 
-              let borderClass = 'border-[#1A1A1A]/10';
+              let borderClass = 'border-[#1A1A1A]/45';
               let textOpacity = 'opacity-100';
               let cursorStyle = (shootMode === 'shoot' || isFeverMode) && !hasAnswered ? 'cursor-crosshair' : 'cursor-pointer';
 
               if (hasAnswered) {
                 if (isCorrectOption) {
-                  borderClass = 'border-[#2E6F40]';
+                  borderClass = 'border-[#2E6F40] border-2';
                 } else if (isSelected) {
-                  borderClass = 'border-[#D44D26]';
+                  borderClass = 'border-[#D44D26] border-2';
                 } else {
-                  textOpacity = 'opacity-30';
+                  textOpacity = 'opacity-45';
                 }
               }
 
@@ -1240,10 +1252,10 @@ export default function QuizSection({
                          top: `${center.y}%`,
                          transform: 'translate(-50%, -50%)',
                        }}
-                       className="absolute pointer-events-none select-none opacity-25 flex items-center justify-center"
+                       className="absolute pointer-events-none select-none opacity-60 flex items-center justify-center"
                      >
-                       <div className={`w-14 h-14 rounded-full border-2 ${isFeverMode ? 'border-orange-500' : 'border-[#D44D26]'}`} />
-                       <div className={`w-7 h-7 rounded-full border absolute ${isFeverMode ? 'border-orange-500' : 'border-[#D44D26]'}`} />
+                       <div className={`w-14 h-14 rounded-full border-2 ${isFeverMode ? 'border-orange-600' : 'border-[#D44D26]'}`} />
+                       <div className={`w-7 h-7 rounded-full border-2 absolute ${isFeverMode ? 'border-orange-600' : 'border-[#D44D26]'}`} />
                      </div>
                    )}
 
@@ -1267,10 +1279,10 @@ export default function QuizSection({
                    <div 
                      className="absolute inset-0 bg-white flex items-center justify-between px-4 transition-all duration-300 pointer-events-none opacity-100"
                      style={{
-                       backgroundColor: isShootingTargetStyle ? '#FAF6F0' : '#FFFFFF'
+                       backgroundColor: isShootingTargetStyle ? '#EFEBE4' : '#FFFFFF'
                      }}
                    >
-                     <span className="text-[8px] uppercase tracking-widest opacity-25 font-serif select-none">Opt</span>
+                     <span className="text-[9px] uppercase tracking-widest opacity-65 font-bold font-serif select-none text-stone-750">Opt</span>
                      <span className="text-3xl font-serif font-black text-[#1A1A1A]">{option}</span>
                      <div className="w-2" />
                    </div>

@@ -89,37 +89,37 @@ export default function CharacterDictionary({
           <BookOpen className="text-[#D44D26]" size={16} />
           カタカナ成り立ち図鑑
         </h2>
-        <p className="text-[9px] text-[#1A1A1A]/50 font-serif">
+        <p className="text-[9.5px] text-stone-800 font-bold font-serif">
           46文字の成り立ちとルーツ漢字を詳しく調べられます。
         </p>
       </div>
 
       {/* コントロール・グリッドをぎゅっと1つにまとめたカード */}
-      <div className="bg-white rounded-none p-3 border border-[#1A1A1A]/10 shadow-[3px_3px_0px_rgba(26,26,26,0.02)] space-y-2 mb-2">
+      <div className="bg-white rounded-none p-3 border border-stone-400 shadow-[3px_3px_0px_rgba(26,26,26,0.08)] space-y-2 mb-2">
         {/* 検索入力 */}
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#1A1A1A]/40" size={12} />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-700" size={12} />
           <input
             type="text"
             placeholder="文字、元の漢字、意味から検索..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 bg-[#F3F0E9] border border-[#1A1A1A]/10 rounded-none text-[10px] placeholder-[#1A1A1A]/35 text-[#1A1A1A] focus:outline-hidden focus:border-[#D44D26] focus:bg-white transition-all font-serif"
+            className="w-full pl-8 pr-3 py-1.5 bg-[#F3F0E9] border border-stone-400 rounded-none text-[10px] placeholder-stone-600 font-semibold text-[#1A1A1A] focus:outline-hidden focus:border-[#D44D26] focus:bg-white transition-all font-serif"
             id="dict-search-input"
           />
         </div>
 
         {/* フィルター・ソート (高さを低く横並びに) */}
-        <div className="flex justify-between items-center text-[9px] pt-1.5 border-t border-[#1A1A1A]/10">
+        <div className="flex justify-between items-center text-[9px] pt-1.5 border-t border-stone-400">
           <div className="flex items-center gap-1">
-            <span className="text-stone-400 font-serif uppercase tracking-wider flex items-center gap-0.5">
+            <span className="text-stone-850 font-black font-serif uppercase tracking-wider flex items-center gap-0.5">
               <Filter size={8} />
               分類:
             </span>
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="bg-[#F3F0E9] border border-[#1A1A1A]/10 rounded-none text-[9px] font-bold py-0.5 px-1 text-[#1A1A1A]/80 focus:outline-hidden transition-all font-serif cursor-pointer"
+              className="bg-[#F3F0E9] border border-stone-400 rounded-none text-[9px] font-black py-0.5 px-1 text-stone-900 focus:outline-hidden transition-all font-serif cursor-pointer"
               id="dict-filter-type"
             >
               <option value="all">すべて</option>
@@ -132,18 +132,18 @@ export default function CharacterDictionary({
           </div>
 
           <div className="flex items-center gap-1">
-            <span className="text-stone-400 font-serif uppercase">順序:</span>
-            <div className="inline-flex bg-[#F3F0E9] p-0.5 rounded-none border border-[#1A1A1A]/10">
+            <span className="text-stone-850 font-black font-serif uppercase">順序:</span>
+            <div className="inline-flex bg-[#F3F0E9] p-0.5 rounded-none border border-stone-400">
               <button
                 onClick={() => setSortBy('goyuon')}
-                className={`text-[8px] font-bold px-1.5 py-0.5 rounded-none transition-all font-serif cursor-pointer ${sortBy === 'goyuon' ? 'bg-[#1A1A1A] text-white' : 'text-[#1A1A1A]/40'}`}
+                className={`text-[8px] font-black px-1.5 py-0.5 rounded-none transition-all font-serif cursor-pointer ${sortBy === 'goyuon' ? 'bg-[#1A1A1A] text-white' : 'text-stone-800 hover:text-[#1A1A1A]'}`}
                 id="btn-sort-goyuon"
               >
                 五十音
               </button>
               <button
                 onClick={() => setSortBy('stroke')}
-                className={`text-[8px] font-bold px-1.5 py-0.5 rounded-none transition-all font-serif cursor-pointer ${sortBy === 'stroke' ? 'bg-[#1A1A1A] text-white' : 'text-[#1A1A1A]/40'}`}
+                className={`text-[8px] font-black px-1.5 py-0.5 rounded-none transition-all font-serif cursor-pointer ${sortBy === 'stroke' ? 'bg-[#1A1A1A] text-white' : 'text-stone-800 hover:text-[#1A1A1A]'}`}
                 id="btn-sort-stroke"
               >
                 画数
@@ -153,9 +153,9 @@ export default function CharacterDictionary({
         </div>
 
         {/* グリッド一覧 (高さを極限まで圧縮。スクロールで非常に快適) */}
-        <div className="pt-2 border-t border-[#1A1A1A]/10">
+        <div className="pt-2 border-t border-stone-400">
           {processedList.length === 0 ? (
-            <div className="text-center py-6 text-[#1A1A1A]/40 text-[10px] font-serif" id="dict-no-results">
+            <div className="text-center py-6 text-stone-850 font-bold text-[10px] font-serif" id="dict-no-results">
               合致する文字がありません。
             </div>
           ) : (
@@ -170,8 +170,8 @@ export default function CharacterDictionary({
                     onClick={() => setSelectedChar(item.char)}
                     className={`relative flex flex-col items-center justify-center py-1 px-0.5 rounded-none border transition-all cursor-pointer ${
                       isActive 
-                        ? 'bg-[#D44D26] text-white border-[#D44D26] shadow-2xs' 
-                        : 'bg-white border-[#1A1A1A]/10 hover:bg-[#F3F0E9] text-[#1A1A1A]'
+                        ? 'bg-[#D44D26] text-white border-[#D44D26] shadow-2xs font-black' 
+                        : 'bg-white border-stone-300 hover:bg-[#F3F0E9] text-[#1A1A1A]'
                     }`}
                     id={`dict-btn-${item.char}`}
                   >
@@ -183,7 +183,7 @@ export default function CharacterDictionary({
                     <span className="text-sm font-black font-serif leading-none">
                       {item.char}
                     </span>
-                    <span className={`text-[8px] font-bold font-serif leading-none mt-0.5 ${isActive ? 'text-white/70' : 'text-[#1A1A1A]/40'}`}>
+                    <span className={`text-[8px] font-bold font-serif leading-none mt-0.5 ${isActive ? 'text-white/70' : 'text-stone-750 font-semibold'}`}>
                       {item.kanji}
                     </span>
                   </button>
@@ -203,12 +203,12 @@ export default function CharacterDictionary({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
             transition={{ duration: 0.15 }}
-            className="bg-white rounded-none border border-[#1A1A1A]/10 shadow-[3px_3px_0px_rgba(26,26,26,0.02)] p-3 flex flex-col items-center"
+            className="bg-white rounded-none border border-stone-400 shadow-[3px_3px_0px_rgba(26,26,26,0.08)] p-3 flex flex-col items-center"
           >
             {/* 発音ボタン付き小型表示 (ヘッダーをさらにコンパクトに) */}
-            <div className="flex items-center gap-3 mb-2.5 w-full justify-start border-b border-[#1A1A1A]/5 pb-2">
+            <div className="flex items-center gap-3 mb-2.5 w-full justify-start border-b border-stone-300 pb-2">
               <div className="relative shrink-0">
-                <div className="w-12 h-12 bg-[#F3F0E9] rounded-none border border-[#1A1A1A]/10 flex items-center justify-center font-serif font-black text-xl text-[#1A1A1A]">
+                <div className="w-12 h-12 bg-[#F3F0E9] rounded-none border border-stone-400 flex items-center justify-center font-serif font-black text-xl text-[#1A1A1A]">
                   {activeData.char}
                 </div>
                 <button
@@ -223,12 +223,12 @@ export default function CharacterDictionary({
               <div className="text-left font-serif">
                 <p className="text-sm font-bold text-[#1A1A1A] flex items-center gap-0.5">
                   <span>{activeData.kanji}</span>
-                  <span className="text-[8px] text-[#1A1A1A]/40 font-normal">由来</span>
+                  <span className="text-[8px] text-stone-750 font-bold">由来</span>
                 </p>
-                <p className="text-[8px] text-[#1A1A1A]/50 tracking-wider uppercase leading-none mt-0.5">
+                <p className="text-[8px] text-stone-850 font-bold tracking-wider uppercase leading-none mt-0.5">
                   Romaji: <span className="font-bold text-[#1A1A1A]">{activeData.romaji.toUpperCase()}</span>
                 </p>
-                <p className="text-[8px] text-[#1A1A1A]/60 mt-1 leading-normal">
+                <p className="text-[8px] text-stone-900 font-medium mt-1 leading-normal">
                   意味: {activeData.meaning}
                 </p>
               </div>
@@ -241,8 +241,8 @@ export default function CharacterDictionary({
 
             {/* クイズ成績 */}
             {userStats.charStats[activeData.char] && userStats.charStats[activeData.char].askedCount > 0 && (
-              <div className="w-full mt-2 bg-[#F3F0E9] rounded-none p-2 border border-[#1A1A1A]/10 text-left font-serif">
-                <div className="flex items-center justify-between text-[8px] font-bold text-[#1A1A1A]/40 mb-1 uppercase tracking-wider">
+              <div className="w-full mt-2 bg-[#F3F0E9] rounded-none p-2 border border-stone-400 text-left font-serif">
+                <div className="flex items-center justify-between text-[8px] font-bold text-stone-850 mb-1 uppercase tracking-wider">
                   <span>学習成績</span>
                   {userStats.charStats[activeData.char].isMastered && (
                     <span className="text-[#2E6F40] flex items-center gap-0.5 font-bold">
@@ -252,11 +252,11 @@ export default function CharacterDictionary({
                 </div>
                 <div className="flex justify-between text-[9px]">
                   <div>
-                    <span className="text-[#1A1A1A]/50">出題: </span>
+                    <span className="text-stone-850 font-semibold">出題: </span>
                     <span className="font-bold text-[#1A1A1A]">{userStats.charStats[activeData.char].askedCount}回</span>
                   </div>
                   <div>
-                    <span className="text-[#1A1A1A]/50">正解率: </span>
+                    <span className="text-stone-850 font-semibold">正解率: </span>
                     <span className="font-bold text-[#1A1A1A]">
                       {Math.round((userStats.charStats[activeData.char].correctCount / userStats.charStats[activeData.char].askedCount) * 100)}%
                     </span>

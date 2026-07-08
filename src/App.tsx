@@ -130,14 +130,14 @@ export default function App() {
 
           {/* 右側：ヘッダー進捗サマリー */}
           <div className="flex items-center gap-1.5">
-            <div className="flex items-center gap-1 bg-white/50 border border-[#1A1A1A]/10 px-1.5 py-0.5 text-[9px]">
-              <span className="text-[7px] uppercase tracking-widest text-[#1A1A1A]/50 font-bold font-serif">
+            <div className="flex items-center gap-1 bg-white border border-stone-400 px-1.5 py-0.5 text-[9px]">
+              <span className="text-[7.5px] uppercase tracking-widest text-stone-800 font-bold font-serif">
                 マスター:
               </span>
               <span className="font-serif text-[#1A1A1A] font-bold">
-                {masteredCount} <span className="text-[8px] text-[#1A1A1A]/40">/ 46</span>
+                {masteredCount} <span className="text-[8px] text-stone-700">/ 46</span>
               </span>
-              <div className="w-8 h-1 bg-[#1A1A1A]/10 overflow-hidden ml-0.5">
+              <div className="w-8 h-1 bg-[#1A1A1A]/25 overflow-hidden ml-0.5">
                 <div 
                   className="h-full bg-[#D44D26]"
                   style={{ width: `${(masteredCount / 46) * 100}%` }}
@@ -157,57 +157,57 @@ export default function App() {
           <aside className="hidden lg:flex flex-col gap-4 sticky top-[60px] max-h-[calc(100vh-100px)] overflow-y-auto pr-1">
             
             {/* 射撃熟練度の段位・称号カード */}
-            <div className="bg-white border border-[#1A1A1A]/10 p-3.5 text-left rounded-none shadow-[2px_2px_0px_rgba(26,26,26,0.02)] space-y-2.5">
-              <span className="inline-block text-[7px] tracking-widest font-bold uppercase bg-[#D44D26]/10 text-[#D44D26] border border-[#D44D26]/20 px-1.5 py-0.5 rounded-none font-serif">
+            <div className="bg-white border border-stone-400 p-3.5 text-left rounded-none shadow-[2px_2px_0px_rgba(26,26,26,0.08)] space-y-2.5">
+              <span className="inline-block text-[7px] tracking-widest font-bold uppercase bg-[#D44D26]/15 text-[#D44D26] border border-[#D44D26]/35 px-1.5 py-0.5 rounded-none font-serif">
                 Shooter Rank
               </span>
               <div className="space-y-1">
-                <h4 className="text-[10px] font-bold text-[#1A1A1A]/50 uppercase tracking-widest">現在の射撃段位</h4>
+                <h4 className="text-[10px] font-bold text-stone-800 uppercase tracking-widest">現在の射撃段位</h4>
                 <div className={`p-2 border font-bold text-[11px] rounded-none flex items-center gap-1.5 ${rank.color}`}>
                   <Award size={14} className="shrink-0" />
                   <div className="leading-tight">
-                    <p className="text-[7px] uppercase tracking-wider text-[#1A1A1A]/50 font-sans font-normal">Rank {rank.title}</p>
+                    <p className="text-[7px] uppercase tracking-wider text-stone-700 font-sans font-normal">Rank {rank.title}</p>
                     <p className="font-serif text-[#1A1A1A] tracking-tight">{rank.name}</p>
                   </div>
                 </div>
               </div>
 
               {/* 円形進捗のスマート表示 */}
-              <div className="pt-2 border-t border-[#1A1A1A]/5 flex items-center justify-between text-[10px]">
+              <div className="pt-2 border-t border-stone-300 flex items-center justify-between text-[10px]">
                 <div className="font-serif">
-                  <p className="text-[#1A1A1A]/40 text-[8px] leading-none">MASTERED</p>
+                  <p className="text-stone-800 font-bold text-[8px] leading-none">MASTERED</p>
                   <p className="text-base font-black text-[#1A1A1A] mt-0.5">
-                    {Math.round((masteredCount / 46) * 100)}<span className="text-[10px] font-normal text-stone-400">%</span>
+                    {Math.round((masteredCount / 46) * 100)}<span className="text-[10px] font-bold text-stone-600">%</span>
                   </p>
                 </div>
                 <div className="text-right text-[9px] font-serif">
-                  <p className="text-[#1A1A1A]/40 text-[8px] leading-none">残り文字</p>
+                  <p className="text-stone-800 font-bold text-[8px] leading-none">残り文字</p>
                   <p className="font-bold text-[#D44D26] mt-0.5">{46 - masteredCount} 文字</p>
                 </div>
               </div>
             </div>
 
             {/* 遊び方・射撃の極意カード */}
-            <div className="bg-white border border-[#1A1A1A]/10 p-3.5 text-left rounded-none shadow-[2px_2px_0px_rgba(26,26,26,0.02)] space-y-2.5">
-              <span className="inline-block text-[7px] tracking-widest font-bold uppercase bg-[#2E6F40]/10 text-[#2E6F40] border border-[#2E6F40]/20 px-1.5 py-0.5 rounded-none font-serif flex items-center gap-1 w-fit">
+            <div className="bg-white border border-stone-400 p-3.5 text-left rounded-none shadow-[2px_2px_0px_rgba(26,26,26,0.08)] space-y-2.5">
+              <span className="inline-block text-[7px] tracking-widest font-bold uppercase bg-[#2E6F40]/15 text-[#2E6F40] border border-[#2E6F40]/35 px-1.5 py-0.5 rounded-none font-serif flex items-center gap-1 w-fit">
                 <Info size={8} /> TIPS & TRICKS
               </span>
               
-              <div className="space-y-2 font-serif text-[10px] leading-relaxed text-[#1A1A1A]/80">
+              <div className="space-y-2 font-serif text-[10px] leading-relaxed text-stone-900 font-medium">
                 <div className="space-y-0.5">
                   <h5 className="font-bold text-[#D44D26] flex items-center gap-1">
                     <Target size={10} /> 🎯 穴あけ覗き見
                   </h5>
-                  <p className="text-[#1A1A1A]/60 text-[9px] pl-3.5">
+                  <p className="text-stone-800 text-[9px] pl-3.5 font-normal leading-normal">
                     的を撃つかタップすると、カタカナの隙間に「穴」があきます。奥に透けて見える「赤いルーツ漢字」をヒントに、正解のパネルを射抜きましょう！
                   </p>
                 </div>
                 
-                <div className="space-y-0.5 pt-1.5 border-t border-[#1A1A1A]/5">
+                <div className="space-y-0.5 pt-1.5 border-t border-stone-300">
                   <h5 className="font-bold text-[#D44D26] flex items-center gap-1">
                     <Flame size={10} /> 🔥 フィーバータイム
                   </h5>
-                  <p className="text-[#1A1A1A]/60 text-[9px] pl-3.5">
+                  <p className="text-stone-800 text-[9px] pl-3.5 font-normal leading-normal">
                     5問連続正解すると、3秒間の「打ち放題フィーバー」に突入！無限の弾薬で、正解の「⭕️」を連射して得点を荒稼ぎしましょう！
                   </p>
                 </div>
@@ -244,18 +244,18 @@ export default function App() {
                     id="home-tab"
                   >
                     {/* ヒーローカード (PC向けに超コンパクト化) */}
-                    <div className="relative rounded-none border border-[#1A1A1A]/15 bg-white p-4 overflow-hidden shadow-[2px_2px_0px_rgba(26,26,26,0.03)]">
+                    <div className="relative rounded-none border border-stone-400 bg-white p-4 overflow-hidden shadow-[2px_2px_0px_rgba(26,26,26,0.08)]">
                       {/* 装飾用の薄い和風格子背景 */}
                       <div className="absolute inset-0 bg-[radial-gradient(#1a1a1a_1px,transparent_1px)] [background-size:16px_16px] opacity-2 pointer-events-none" />
                       
                       <div className="relative z-10 space-y-2 text-left">
-                        <span className="inline-block text-[7px] tracking-widest font-bold uppercase bg-[#D44D26]/10 text-[#D44D26] border border-[#D44D26]/20 px-1.5 py-0.5 rounded-none font-serif">
+                        <span className="inline-block text-[7px] tracking-widest font-bold uppercase bg-[#D44D26]/15 text-[#D44D26] border border-[#D44D26]/35 px-1.5 py-0.5 rounded-none font-serif">
                           Etymology Guide
                         </span>
                         <h2 className="text-base font-serif leading-snug text-[#1A1A1A] tracking-tight">
                           そのカタカナ、どの<span className="italic underline underline-offset-2 decoration-[#D44D26] decoration-2">「漢字」</span>から生まれた？
                         </h2>
-                        <p className="text-[10px] text-[#1A1A1A]/70 leading-relaxed font-serif">
+                        <p className="text-[10px] text-stone-900 leading-relaxed font-serif font-medium">
                           日本のカタカナは、平安時代にお経のふりがな（訓点）として漢字の一部（偏や旁など）を抜き出して誕生しました。
                           隠された漢字を暴くクイズで奥深いルーツを学びましょう！
                         </p>
@@ -271,7 +271,7 @@ export default function App() {
                           </button>
                           <button
                             onClick={() => setActiveTab('dict')}
-                            className="py-1.5 px-3 bg-transparent hover:bg-[#1A1A1A]/5 text-[#1A1A1A] border border-[#1A1A1A]/35 text-[8px] font-bold uppercase tracking-widest rounded-none transition-all font-serif flex items-center gap-1 cursor-pointer"
+                            className="py-1.5 px-3 bg-transparent hover:bg-[#1A1A1A]/5 text-[#1A1A1A] border border-stone-400 text-[8px] font-bold uppercase tracking-widest rounded-none transition-all font-serif flex items-center gap-1 cursor-pointer"
                             id="btn-hero-dict"
                           >
                             <BookOpen size={8} />
@@ -282,20 +282,20 @@ export default function App() {
                     </div>
 
                     {/* ミニなりたちレクチャーカード（解説を横並びではなくコンパクトなリスト風に） */}
-                    <div className="bg-white rounded-none p-3 border border-[#1A1A1A]/10 text-left space-y-1.5">
+                    <div className="bg-white rounded-none p-3 border border-stone-400 text-left space-y-1.5">
                       <h4 className="text-[9px] font-bold text-[#D44D26] font-serif uppercase tracking-widest">なりたちパターン</h4>
-                      <div className="grid grid-cols-3 gap-2 text-[9px] leading-tight">
-                        <div className="border-r border-[#1A1A1A]/10 pr-1">
+                      <div className="grid grid-cols-3 gap-2 text-[9.5px] leading-tight">
+                        <div className="border-r border-stone-400 pr-1">
                           <span className="font-bold text-[#D44D26]">偏（へん）</span>
-                          <p className="text-[#1A1A1A]/60 mt-0.5">「阿」の左側(阝)から「ア」誕生</p>
+                          <p className="text-stone-900 font-semibold mt-0.5">「阿」の左側(阝)から「ア」誕生</p>
                         </div>
-                        <div className="border-r border-[#1A1A1A]/10 pr-1 pl-0.5">
+                        <div className="border-r border-stone-400 pr-1 pl-0.5">
                           <span className="font-bold text-[#D44D26]">冠（かんむり）</span>
-                          <p className="text-[#1A1A1A]/60 mt-0.5">「宇」のうかんむり(宀)から「ウ」</p>
+                          <p className="text-stone-900 font-semibold mt-0.5">「宇」のうかんむり(宀)から「ウ」</p>
                         </div>
                         <div className="pl-0.5">
                           <span className="font-bold text-[#D44D26]">草書（崩し）</span>
-                          <p className="text-[#1A1A1A]/60 mt-0.5">「川」の崩しから「ツ」誕生</p>
+                          <p className="text-stone-900 font-semibold mt-0.5">「川」の崩しから「ツ」誕生</p>
                         </div>
                       </div>
                     </div>
@@ -306,59 +306,59 @@ export default function App() {
                         {/* クイズカード */}
                         <div 
                           onClick={() => setActiveTab('quiz')}
-                          className="group bg-white hover:bg-[#F3F0E9] rounded-none p-2.5 border border-[#1A1A1A]/10 cursor-pointer transition-all hover:border-[#1A1A1A]/30 flex justify-between items-center"
+                          className="group bg-white hover:bg-[#F3F0E9] rounded-none p-2.5 border border-stone-400 cursor-pointer transition-all hover:border-stone-600 flex justify-between items-center"
                           id="menu-quiz-card"
                         >
                           <div className="space-y-0.5 text-left">
-                            <span className="inline-block text-[7px] tracking-widest font-bold uppercase bg-[#D44D26]/10 text-[#D44D26] border border-[#D44D26]/20 px-1 py-0.2 rounded-none font-serif">
+                            <span className="inline-block text-[7px] tracking-widest font-bold uppercase bg-[#D44D26]/15 text-[#D44D26] border border-[#D44D26]/35 px-1 py-0.2 rounded-none font-serif">
                               Play
                             </span>
                             <h4 className="text-[10px] font-bold text-[#1A1A1A] font-serif">シューティングクイズ</h4>
-                            <p className="text-[8px] text-[#1A1A1A]/50 font-serif">射撃で漢字を透かし見破るゲーム</p>
+                            <p className="text-[8.5px] text-stone-800 font-serif font-medium">射撃で漢字を透かし見破るゲーム</p>
                           </div>
-                          <ChevronRight size={10} className="text-[#1A1A1A]/40 group-hover:text-[#D44D26] transition-colors" />
+                          <ChevronRight size={10} className="text-stone-800 group-hover:text-[#D44D26] transition-colors" />
                         </div>
 
                         {/* 図鑑カード */}
                         <div 
                           onClick={() => setActiveTab('dict')}
-                          className="group bg-white hover:bg-[#F3F0E9] rounded-none p-2.5 border border-[#1A1A1A]/10 cursor-pointer transition-all hover:border-[#1A1A1A]/30 flex justify-between items-center"
+                          className="group bg-white hover:bg-[#F3F0E9] rounded-none p-2.5 border border-stone-400 cursor-pointer transition-all hover:border-stone-600 flex justify-between items-center"
                           id="menu-dict-card"
                         >
                           <div className="space-y-0.5 text-left">
-                            <span className="inline-block text-[7px] tracking-widest font-bold uppercase bg-[#2E6F40]/10 text-[#2E6F40] border border-[#2E6F40]/20 px-1 py-0.2 rounded-none font-serif">
+                            <span className="inline-block text-[7px] tracking-widest font-bold uppercase bg-[#2E6F40]/15 text-[#2E6F40] border border-[#2E6F40]/35 px-1 py-0.2 rounded-none font-serif">
                               Dictionary
                             </span>
                             <h4 className="text-[10px] font-bold text-[#1A1A1A] font-serif">なりたち漢字図鑑</h4>
-                            <p className="text-[8px] text-[#1A1A1A]/50 font-serif">ア〜ンまで一覧でルーツを調べる</p>
+                            <p className="text-[8.5px] text-stone-800 font-serif font-medium">ア〜ンまで一覧でルーツを調べる</p>
                           </div>
-                          <ChevronRight size={10} className="text-[#1A1A1A]/40 group-hover:text-[#2E6F40] transition-colors" />
+                          <ChevronRight size={10} className="text-stone-800 group-hover:text-[#2E6F40] transition-colors" />
                         </div>
 
                         {/* 成績カード */}
                         <div 
                           onClick={() => setActiveTab('stats')}
-                          className="group bg-white hover:bg-[#F3F0E9] rounded-none p-2.5 border border-[#1A1A1A]/10 cursor-pointer transition-all hover:border-[#1A1A1A]/30 flex justify-between items-center"
+                          className="group bg-white hover:bg-[#F3F0E9] rounded-none p-2.5 border border-stone-400 cursor-pointer transition-all hover:border-stone-600 flex justify-between items-center"
                           id="menu-stats-card"
                         >
                           <div className="space-y-0.5 text-left">
-                            <span className="inline-block text-[7px] tracking-widest font-bold uppercase bg-[#1A1A1A]/5 text-[#1A1A1A]/70 border border-[#1A1A1A]/15 px-1 py-0.2 rounded-none font-serif">
+                            <span className="inline-block text-[7px] tracking-widest font-bold uppercase bg-[#1A1A1A]/10 text-[#1A1A1A] border border-stone-400 px-1 py-0.2 rounded-none font-serif">
                               Stats
                             </span>
                             <h4 className="text-[10px] font-bold text-[#1A1A1A] font-serif">進捗と成績分析</h4>
-                            <p className="text-[8px] text-[#1A1A1A]/50 font-serif">得意な成り立ち別の正答率統計</p>
+                            <p className="text-[8.5px] text-stone-800 font-serif font-medium">得意な成り立ち別の正答率統計</p>
                           </div>
-                          <ChevronRight size={10} className="text-[#1A1A1A]/40 group-hover:text-[#1A1A1A] transition-colors" />
+                          <ChevronRight size={10} className="text-stone-800 group-hover:text-[#1A1A1A] transition-colors" />
                         </div>
                       </div>
                     </div>
 
                     {/* 豆知識ミニコラム (高さを超低く) */}
-                    <div className="bg-[#F3F0E9] border border-[#1A1A1A]/10 rounded-none p-2.5 text-left">
+                    <div className="bg-[#F3F0E9] border-2 border-stone-400 rounded-none p-2.5 text-left">
                       <h4 className="text-[9px] font-bold text-[#D44D26] mb-0.5 font-serif flex items-center gap-1 uppercase tracking-wide">
                         💡 カタカナとひらがな
                       </h4>
-                      <p className="text-[9px] text-[#1A1A1A]/70 leading-relaxed font-serif">
+                      <p className="text-[9.5px] text-stone-900 leading-relaxed font-serif font-medium">
                         ひらがなは漢字の<strong>「全体」を崩して</strong>、カタカナは<strong>「一部」を抜き出して</strong>作られました。そのため、カタカナは直線的で記号的な形をしています。
                       </p>
                     </div>
@@ -438,14 +438,14 @@ export default function App() {
               </div>
               
               <div className="mt-2.5 space-y-0.5 z-10">
-                <span className="text-[7px] tracking-widest font-bold uppercase text-[#D44D26] font-serif">Etymology Target</span>
+                <span className="text-[7.5px] tracking-widest font-black uppercase text-[#D44D26] font-serif">Etymology Target</span>
                 <h4 className="text-[10px] font-bold font-serif">なりたち五十音早見表</h4>
-                <p className="text-[8px] text-[#1A1A1A]/50 font-serif leading-none">盤面を叩いてルーツ漢字を聴く</p>
+                <p className="text-[8.5px] text-stone-800 font-bold font-serif leading-none">盤面を叩いてルーツ漢字を聴く</p>
               </div>
             </div>
 
             {/* インタラクティブカタカナなりたち五十音グリッド */}
-            <div className="bg-white border border-[#1A1A1A]/10 p-3 rounded-none shadow-[2px_2px_0px_rgba(26,26,26,0.02)]">
+            <div className="bg-white border border-stone-400 p-3 rounded-none shadow-[2px_2px_0px_rgba(26,26,26,0.08)]">
               <div className="grid grid-cols-5 gap-1 text-[9px]" id="sidebar-gojuon-grid">
                 {gojuonGrid.map((char, index) => {
                   if (char === null) {
@@ -467,8 +467,8 @@ export default function App() {
                       onClick={() => handleQuickSelect(char)}
                       className={`aspect-square relative flex flex-col items-center justify-center border rounded-none transition-all cursor-pointer ${
                         isCurrent
-                          ? 'bg-[#D44D26] border-[#D44D26] text-white'
-                          : 'bg-white border-[#1A1A1A]/10 hover:bg-[#F3F0E9] text-[#1A1A1A]'
+                          ? 'bg-[#D44D26] border-[#D44D26] text-white font-black'
+                          : 'bg-white border-stone-300 hover:bg-[#F3F0E9] text-[#1A1A1A]'
                       }`}
                       title={`${char} (${matchedData?.kanji || ''} 由来)`}
                     >
@@ -480,14 +480,14 @@ export default function App() {
                       <span className="text-[11px] font-serif font-bold leading-none select-none">
                         {char}
                       </span>
-                      <span className={`text-[7px] font-serif scale-85 leading-none mt-0.5 select-none ${isCurrent ? 'text-white/70' : 'text-[#1A1A1A]/40'}`}>
+                      <span className={`text-[7.5px] font-bold font-serif scale-85 leading-none mt-0.5 select-none ${isCurrent ? 'text-white/90' : 'text-stone-750'}`}>
                         {matchedData?.kanji || ''}
                       </span>
                     </button>
                   );
                 })}
               </div>
-              <div className="mt-2.5 flex items-center justify-center gap-3 text-[8px] text-[#1A1A1A]/50 font-serif">
+              <div className="mt-2.5 flex items-center justify-center gap-3 text-[9px] text-stone-800 font-bold font-serif">
                 <div className="flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#2E6F40]" />
                   <span>マスター済</span>
@@ -505,7 +505,7 @@ export default function App() {
       </main>
 
       {/* ボトムナビゲーション (よりコンパクトに、PC全画面に中央配置で完全フィット) */}
-      <footer className="fixed bottom-0 left-0 right-0 border-t border-[#1A1A1A]/10 bg-[#F9F7F2]/95 backdrop-blur-md z-40">
+      <footer className="fixed bottom-0 left-0 right-0 border-t border-stone-400 bg-[#F9F7F2] z-40 shadow-sm">
         <div className="max-w-sm mx-auto px-3 py-0.5">
           <div className="flex justify-around items-center" id="bottom-navigation">
             {[
@@ -521,8 +521,8 @@ export default function App() {
                   onClick={() => setActiveTab(tab.id as Tab)}
                   className={`flex flex-col items-center justify-center py-1 px-3 rounded-none transition-all relative cursor-pointer ${
                     isActive 
-                      ? 'text-[#D44D26] font-bold border-t-2 border-[#D44D26] bg-[#1A1A1A]/2' 
-                      : 'text-[#1A1A1A]/40 hover:text-[#1A1A1A]'
+                      ? 'text-[#D44D26] font-black border-t-2 border-[#D44D26] bg-[#1A1A1A]/5' 
+                      : 'text-stone-700 hover:text-stone-900 font-bold'
                   }`}
                   id={`bottom-nav-${tab.id}`}
                 >
