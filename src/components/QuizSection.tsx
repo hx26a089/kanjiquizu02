@@ -267,6 +267,20 @@ export default function QuizSection({
     [option: string]: { x: number; y: number };
   }>({});
 
+  // ゲーム性を高めるコンボ＆演出用のState
+  const [combo, setCombo] = useState<number>(0);
+  const [maxCombo, setMaxCombo] = useState<number>(0);
+  const [hitPopups, setHitPopups] = useState<{ id: number; x: number; y: number; text: string; colorClass: string; isCrit?: boolean }[]>([]);
+
+  // ポップアップエフェクトを追加する関数
+  const addHitPopup = (x: number, y: number, text: string, colorClass: string, isCrit = false) => {
+    const id = Date.now() + Math.random();
+    setHitPopups(prev => [...prev, { id, x, y, text, colorClass, isCrit }]);
+    setTimeout(() => {
+      setHitPopups(prev => prev.filter(p => p.id !== id));
+    }, 1200);
+  };
+
   // カタカナの音声再生
   const playSound = (char: string) => {
     if ('speechSynthesis' in window) {
@@ -298,6 +312,11 @@ export default function QuizSection({
     setIsFeverCountdown(false);
     setFeverCountdownValue(3);
     setFeverCorrectHit(false);
+    
+    // コンボ状態リセット
+    setCombo(0);
+    setMaxCombo(0);
+    setHitPopups([]);
     
     setQuizStarted(true);
   };
@@ -408,6 +427,19 @@ export default function QuizSection({
   const handleShootOption = (option: string, e: React.MouseEvent<HTMLButtonElement>) => {
     if (hasAnswered) return;
 
+    // ポップアップ位置設定用の座標算出
+    const parentRect = e.currentTarget.parentElement?.getBoundingClientRect();
+    const btnRect = e.currentTarget.getBoundingClientRect();
+    const clickXRelative = e.nativeEvent.offsetX;
+    const clickYRelative = e.nativeEvent.offsetY;
+    
+    let relativeX = btnRect.width / 2;
+    let relativeY = btnRect.height / 2;
+    if (parentRect) {
+      relativeX = btnRect.left - parentRect.left + clickXRelative;
+      relativeY = btnRect.top - parentRect.top + clickYRelative;
+    }
+
     // フィーバーモード中の射撃ロジック
     if (isFeverMode) {
       playGunshotSE();
@@ -448,6 +480,16 @@ export default function QuizSection({
       // 丸（正解）に当たったら、その問題は正解扱いにして即座に次の問題へ移行する（3秒タイマーは継続）
       if (isCorrectOption && hitTarget) {
         setScore(prev => prev + 1);
+        
+        // フィーバー中の連続ヒットでもコンボが加算される！
+        setCombo(prev => {
+          const next = prev + 1;
+          setMaxCombo(m => Math.max(m, next));
+          return next;
+        });
+
+        addHitPopup(relativeX, relativeY, `🔥 FEVER HIT! x${combo + 1}`, 'text-orange-600 text-xs font-serif font-black', true);
+
         updateUserStats(currentQuestion.char, true);
         playSound(currentQuestion.char);
         playFeverHitSE();
@@ -458,17 +500,15 @@ export default function QuizSection({
         if (currentIndex + 1 < questions.length) {
           setCurrentIndex(prev => prev + 1);
         } else {
-          // もし事前に用意された問題が終了した場合は、その場で1問ランダムに自動追加生成して進む！
-          const more = generateQuizQuestions(1, targetChars);
-          if (more && more.length > 0) {
-            setQuestions(prev => [...prev, ...more]);
-            setCurrentIndex(prev => prev + 1);
-          } else {
-            // 万が一生成できなかった場合はそのまま終了
-            setIsFeverMode(false);
-            setQuizFinished(true);
-          }
+          setIsFeverMode(false);
+          setQuizFinished(true);
         }
+      } else if (!isCorrectOption && hitTarget) {
+        // フィーバー中にお手つきした場合は、コンボは切らさずに弾丸ポップアップで楽しさを演出
+        addHitPopup(relativeX, relativeY, '❌ WRONG TARGET!', 'text-red-500 text-[9px] font-serif font-bold');
+      } else {
+        // 的に当たらなかった時
+        addHitPopup(relativeX, relativeY, '💨 MISS', 'text-gray-400 text-[8px] font-serif');
       }
       return;
     }
@@ -514,6 +554,14 @@ export default function QuizSection({
 
     if (isCritical) {
       playCriticalSE();
+      const isCorrectOption = option === currentQuestion.correctAnswer;
+      if (isCorrectOption) {
+        addHitPopup(relativeX, relativeY, '🎯 CRITICAL ⭕️', 'text-[#2E6F40] text-[10px] font-serif font-black', true);
+      } else {
+        addHitPopup(relativeX, relativeY, '🎯 CRITICAL ❌', 'text-[#D44D26] text-[10px] font-serif font-black', true);
+      }
+    } else {
+      addHitPopup(relativeX, relativeY, '💥 HIT', 'text-[#1A1A1A]/80 text-[9px] font-serif font-bold');
     }
 
     if (newAmmo <= 0) {
@@ -522,11 +570,22 @@ export default function QuizSection({
   };
 
   // 通常の選択回答
-  const handleSelectOption = (option: string) => {
+  const handleSelectOption = (option: string, e?: React.MouseEvent<HTMLButtonElement>) => {
     if (hasAnswered) return;
 
     setSelectedAnswer(option);
     setHasAnswered(true);
+
+    let relativeX = 100;
+    let relativeY = 20;
+    if (e) {
+      const parentRect = e.currentTarget.parentElement?.getBoundingClientRect();
+      const btnRect = e.currentTarget.getBoundingClientRect();
+      if (parentRect) {
+        relativeX = btnRect.left - parentRect.left + btnRect.width / 2;
+        relativeY = btnRect.top - parentRect.top + btnRect.height / 2;
+      }
+    }
 
     const currentQuestion = questions[currentIndex];
     const correct = option === currentQuestion.correctAnswer;
@@ -539,6 +598,19 @@ export default function QuizSection({
     if (correct) {
       nextScore = score + 1;
       setScore(nextScore);
+
+      // コンボを加算
+      setCombo(prev => {
+        const next = prev + 1;
+        setMaxCombo(m => Math.max(m, next));
+        return next;
+      });
+
+      if (combo >= 1) {
+        addHitPopup(relativeX, relativeY, `⭕️ 正解！ ${combo + 1} COMBO!`, 'text-[#2E6F40] text-[11px] font-serif font-black', true);
+      } else {
+        addHitPopup(relativeX, relativeY, '⭕️ 正解！', 'text-[#2E6F40] text-[11px] font-serif font-black');
+      }
     } else {
       setSessionWrongAnswers(prev => {
         if (!prev.includes(currentQuestion.char)) {
@@ -546,6 +618,14 @@ export default function QuizSection({
         }
         return prev;
       });
+
+      // コンボ切断
+      if (combo >= 2) {
+        addHitPopup(relativeX, relativeY, `💔 COMBO BREAK (x${combo})`, 'text-red-500 text-[10px] font-serif font-bold');
+      } else {
+        addHitPopup(relativeX, relativeY, '❌ 不正解', 'text-red-500 text-[10px] font-serif font-bold');
+      }
+      setCombo(0);
     }
 
     playSound(currentQuestion.char);
@@ -621,26 +701,27 @@ export default function QuizSection({
             カタカナ成り立ちシューティング
           </h2>
           <p className="text-[#1A1A1A]/60 text-[10px] mb-4 leading-normal font-serif">
-            カタカナのルーツとなった漢字を射撃で透かして見破るクイズゲーム！ 弾丸を撃ち込んで後ろに隠された⭕️❌を暴き、正しい漢字を選択しましょう！
+            カタカナの成り立ちとなった漢字を当てるクイズゲームです。
+            <br />
+            シューティングモードでは、選択肢の的（ターゲット）を狙い撃ちましょう！
           </p>
 
           <div className="mb-4">
-            <label className="block text-[#1A1A1A]/70 text-[9px] uppercase tracking-widest font-bold mb-1.5 font-serif">
-              出題する問題数を選んでください
-            </label>
-            <div className="grid grid-cols-3 gap-1.5">
-              {[5, 10, 20].map((num) => (
+            <span className="text-[8px] text-[#1A1A1A]/40 font-serif tracking-widest uppercase block mb-2">
+              出題数を選択 / SELECT QUESTIONS
+            </span>
+            <div className="grid grid-cols-3 gap-1.5 max-w-xs mx-auto">
+              {[5, 10, 20].map((count) => (
                 <button
-                  key={num}
-                  onClick={() => setQuestionCount(num)}
-                  className={`py-1 px-2 rounded-none border text-[10px] font-bold transition-all font-serif cursor-pointer ${
-                    questionCount === num
-                      ? 'bg-[#1A1A1A] text-white border-[#1A1A1A] shadow-2xs'
-                      : 'bg-white text-[#1A1A1A] border-[#1A1A1A]/10 hover:bg-[#F3F0E9]'
+                  key={count}
+                  onClick={() => setQuestionCount(count)}
+                  className={`py-1.5 text-[9px] font-bold font-serif border transition-all ${
+                    questionCount === count
+                      ? 'bg-[#1A1A1A] text-white border-[#1A1A1A]'
+                      : 'bg-white text-[#1A1A1A] border-[#1A1A1A]/20 hover:bg-[#F3F0E9]/30'
                   }`}
-                  id={`btn-count-${num}`}
                 >
-                  {num}問
+                  {count} 問
                 </button>
               ))}
             </div>
@@ -649,15 +730,15 @@ export default function QuizSection({
           <div className="flex flex-col gap-1.5 max-w-xs mx-auto">
             <button
               onClick={() => handleStartQuiz(questionCount)}
-              className="w-full py-2 bg-[#D44D26] hover:bg-[#D44D26]/90 text-white font-bold rounded-none transition-all font-serif flex items-center justify-center gap-1 text-[10px] uppercase tracking-widest cursor-pointer"
+              className="w-full py-1.5 bg-[#D44D26] hover:bg-[#D44D26]/90 text-white text-[9px] uppercase tracking-widest font-bold rounded-none shadow-2xs transition-all font-serif flex items-center justify-center gap-1 cursor-pointer"
               id="btn-start-quiz"
             >
-              ゲームを始める
+              ゲーム開始
             </button>
             <button
               onClick={onBackToMenu}
-              className="w-full py-1.5 bg-transparent hover:bg-[#1A1A1A]/5 text-[#1A1A1A] border border-[#1A1A1A]/35 font-bold rounded-none transition-all text-[9px] uppercase tracking-widest cursor-pointer"
-              id="btn-cancel-quiz"
+              className="w-full py-1.5 bg-transparent hover:bg-[#1A1A1A]/5 text-[#1A1A1A] border border-[#1A1A1A]/30 text-[9px] uppercase tracking-widest font-bold rounded-none transition-all cursor-pointer"
+              id="btn-back-to-menu-setup"
             >
               メニューに戻る
             </button>
@@ -767,8 +848,16 @@ export default function QuizSection({
   }
 
   // クイズ本編画面
+  if (!currentQuestion) {
+    return (
+      <div className="p-4 text-center max-w-sm mx-auto font-serif text-[10px] text-[#1A1A1A]/40" id="quiz-loading">
+        読み込み中 / LOADING...
+      </div>
+    );
+  }
+
   return (
-    <div className="p-2 max-w-sm mx-auto relative select-none" id="quiz-play">
+    <div className="p-2 max-w-lg mx-auto relative select-none" id="quiz-play">
       
       {/* フィーバーカウントダウンオーバーレイ */}
       <AnimatePresence>
@@ -850,8 +939,21 @@ export default function QuizSection({
         <span className="text-[8px] font-bold text-[#1A1A1A]/40 font-serif uppercase tracking-widest">
           Q {currentIndex + 1} / {questions.length}
         </span>
-        <div className="flex items-center gap-1 bg-white text-[#1A1A1A]/70 text-[8px] font-bold px-1.5 py-0.5 rounded-none border border-[#1A1A1A]/10 font-serif">
-          <span>正答: {score}</span>
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 bg-white text-[#1A1A1A]/70 text-[8px] font-bold px-1.5 py-0.5 rounded-none border border-[#1A1A1A]/10 font-serif">
+            <span>正答: {score}</span>
+          </div>
+          {combo >= 2 && (
+            <motion.div
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={{ scale: [1.2, 1], opacity: 1 }}
+              key={combo}
+              className="flex items-center gap-0.5 bg-orange-600 text-white text-[7.5px] font-black px-1.5 py-0.5 rounded-none border border-orange-700 font-serif tracking-widest animate-pulse"
+            >
+              <Flame size={8} className="animate-bounce text-orange-200" />
+              <span>{combo} COMBO!</span>
+            </motion.div>
+          )}
         </div>
       </div>
       <div className="w-full h-0.5 bg-[#1A1A1A]/10 overflow-hidden mb-2">
@@ -1032,20 +1134,20 @@ export default function QuizSection({
             </h3>
           </div>
 
-          {/* 出題用の文字のビジュアル表示 */}
-          <div className="flex justify-center items-center gap-2 mb-2.5">
-            <div className={`relative flex justify-center items-center w-14 h-14 bg-white rounded-none border shadow-xs ${
+          {/* 出題用の文字 of ビジュアル表示 */}
+          <div className="flex justify-center items-center gap-2 mb-3">
+            <div className={`relative flex justify-center items-center w-20 h-20 bg-white rounded-none border shadow-sm ${
               isFeverMode ? 'border-orange-500 ring-2 ring-orange-500/20' : 'border-[#1A1A1A]/10'
             }`}>
-              <span className={`text-2xl font-serif font-black ${isFeverMode ? 'text-orange-600' : 'text-[#1A1A1A]'}`}>
+              <span className={`text-4xl font-serif font-black ${isFeverMode ? 'text-orange-600' : 'text-[#1A1A1A]'}`}>
                 {currentQuestion.char}
               </span>
               <button 
                 onClick={() => playSound(currentQuestion.char)}
-                className="absolute bottom-0.5 right-0.5 p-0.5 bg-white hover:bg-[#F3F0E9] active:scale-95 text-[#1A1A1A]/40 hover:text-[#1A1A1A] rounded-none border border-[#1A1A1A]/20 shadow-xs transition-all cursor-pointer"
+                className="absolute bottom-1 right-1 p-1 bg-white hover:bg-[#F3F0E9] active:scale-95 text-[#1A1A1A]/40 hover:text-[#1A1A1A] rounded-none border border-[#1A1A1A]/20 shadow-xs transition-all cursor-pointer"
                 title="音声を再生"
               >
-                <Volume2 size={9} />
+                <Volume2 size={12} />
               </button>
             </div>
           </div>
@@ -1085,7 +1187,7 @@ export default function QuizSection({
           )}
 
           {/* 選択肢ボタン */}
-          <div className="grid grid-cols-2 gap-2 mb-2">
+          <div className="grid grid-cols-2 gap-2 mb-2 relative">
             {currentQuestion.options.map((option) => {
               const isSelected = selectedAnswer === option;
               const isCorrectOption = option === currentQuestion.correctAnswer;
@@ -1096,7 +1198,7 @@ export default function QuizSection({
                 if (shootMode === 'shoot' || isFeverMode) {
                   handleShootOption(option, e);
                 } else {
-                  handleSelectOption(option);
+                  handleSelectOption(option, e);
                 }
               };
 
@@ -1121,7 +1223,7 @@ export default function QuizSection({
                    key={option}
                    onClick={handleClick}
                    disabled={hasAnswered}
-                   className={`h-11 rounded-none border font-bold font-serif transition-all relative overflow-hidden flex items-center justify-center bg-white ${borderClass} ${textOpacity} ${cursorStyle} ${
+                   className={`h-20 rounded-none border font-bold font-serif transition-all relative overflow-hidden flex items-center justify-center bg-white ${borderClass} ${textOpacity} ${cursorStyle} ${
                      isShootingTargetStyle 
                        ? isFeverMode 
                          ? 'hover:border-orange-500 bg-orange-50/20' 
@@ -1138,10 +1240,10 @@ export default function QuizSection({
                          top: `${center.y}%`,
                          transform: 'translate(-50%, -50%)',
                        }}
-                       className="absolute pointer-events-none select-none opacity-20 flex items-center justify-center"
+                       className="absolute pointer-events-none select-none opacity-25 flex items-center justify-center"
                      >
-                       <div className={`w-8 h-8 rounded-full border ${isFeverMode ? 'border-orange-500' : 'border-[#D44D26]'}`} />
-                       <div className={`w-4 h-4 rounded-full border absolute ${isFeverMode ? 'border-orange-500' : 'border-[#D44D26]'}`} />
+                       <div className={`w-14 h-14 rounded-full border-2 ${isFeverMode ? 'border-orange-500' : 'border-[#D44D26]'}`} />
+                       <div className={`w-7 h-7 rounded-full border absolute ${isFeverMode ? 'border-orange-500' : 'border-[#D44D26]'}`} />
                      </div>
                    )}
 
@@ -1155,28 +1257,28 @@ export default function QuizSection({
                      className="absolute flex items-center justify-center opacity-85 select-none pointer-events-none"
                    >
                      {isCorrectOption ? (
-                       <span className="text-[#2E6F40] text-[36px] font-black tracking-normal leading-none select-none font-serif">⭕️</span>
+                       <span className="text-[#2E6F40] text-[52px] font-black tracking-normal leading-none select-none font-serif">⭕️</span>
                      ) : (
-                       <span className="text-[#D44D26] text-[36px] font-black tracking-normal leading-none select-none font-serif">❌</span>
+                       <span className="text-[#D44D26] text-[52px] font-black tracking-normal leading-none select-none font-serif">❌</span>
                      )}
                    </div>
 
                    {/* レイヤー2: カバー（表レイヤー。漢字） */}
                    <div 
-                     className="absolute inset-0 bg-white flex items-center justify-between px-3 transition-all duration-300 pointer-events-none opacity-100"
+                     className="absolute inset-0 bg-white flex items-center justify-between px-4 transition-all duration-300 pointer-events-none opacity-100"
                      style={{
                        backgroundColor: isShootingTargetStyle ? '#FAF6F0' : '#FFFFFF'
                      }}
                    >
-                     <span className="text-[7px] uppercase tracking-widest opacity-25 font-serif select-none">Opt</span>
-                     <span className="text-xl font-serif font-black text-[#1A1A1A]">{option}</span>
+                     <span className="text-[8px] uppercase tracking-widest opacity-25 font-serif select-none">Opt</span>
+                     <span className="text-3xl font-serif font-black text-[#1A1A1A]">{option}</span>
                      <div className="w-2" />
                    </div>
 
                    {/* レイヤー3: 弾痕 */}
                    {hits.map((hit, i) => {
-                     const btnW = hit.width || 120;
-                     const btnH = hit.height || 44;
+                     const btnW = hit.width || 180;
+                     const btnH = hit.height || 80;
                      const leftOffset = 10 + ((center.x - hit.x) * btnW) / 100 - btnW / 2;
                      const topOffset = 10 + ((center.y - hit.y) * btnH) / 100 - btnH / 2;
 
@@ -1188,7 +1290,7 @@ export default function QuizSection({
                            top: `${hit.y}%`,
                            transform: 'translate(-50%, -50%)',
                          }}
-                         className={`absolute w-5 h-5 rounded-full border shadow-inner overflow-hidden bg-transparent pointer-events-none select-none z-10 ${
+                         className={`absolute w-7 h-7 rounded-full border shadow-inner overflow-hidden bg-transparent pointer-events-none select-none z-10 ${
                            isFeverMode ? 'border-orange-500' : 'border-[#1A1A1A]'
                          }`}
                        >
@@ -1205,9 +1307,9 @@ export default function QuizSection({
                            className="flex items-center justify-center pointer-events-none select-none"
                          >
                            {isCorrectOption ? (
-                             <span className="text-[#2E6F40] text-[36px] font-black leading-none">⭕️</span>
+                             <span className="text-[#2E6F40] text-[52px] font-black leading-none">⭕️</span>
                            ) : (
-                             <span className="text-[#D44D26] text-[36px] font-black leading-none">❌</span>
+                             <span className="text-[#D44D26] text-[52px] font-black leading-none">❌</span>
                            )}
                          </div>
                          
@@ -1224,12 +1326,12 @@ export default function QuizSection({
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center bg-transparent z-20">
                       {isCorrectOption && (
                         <div className="absolute inset-0 bg-[#2E6F40]/10 flex items-center justify-center border-2 border-[#2E6F40]">
-                          <Check size={24} className="text-[#2E6F40]" />
+                          <Check size={36} className="text-[#2E6F40]" />
                         </div>
                       )}
                       {isSelected && !isCorrectOption && (
                         <div className="absolute inset-0 bg-[#D44D26]/10 flex items-center justify-center border-2 border-[#D44D26]">
-                          <X size={24} className="text-[#D44D26]" />
+                          <X size={36} className="text-[#D44D26]" />
                         </div>
                       )}
                     </div>
@@ -1237,6 +1339,28 @@ export default function QuizSection({
                 </button>
               );
             })}
+
+            {/* ゲーム性を高めるフローティングポップアップ */}
+            <AnimatePresence>
+              {hitPopups.map((popup) => (
+                <motion.div
+                  key={popup.id}
+                  initial={{ scale: 0.8, opacity: 0, y: 0 }}
+                  animate={{ scale: [1.1, 1.3, 1], opacity: [0, 1, 1, 0], y: -35 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 1.0, ease: "easeOut" }}
+                  style={{ left: popup.x, top: popup.y }}
+                  className={`absolute pointer-events-none select-none z-30 font-serif font-black text-center -translate-x-1/2 -translate-y-1/2 text-[10px] drop-shadow-[0_2px_4px_rgba(0,0,0,0.15)] flex flex-col items-center justify-center ${popup.colorClass}`}
+                >
+                  {popup.isCrit && (
+                    <span className="text-[6px] tracking-wider text-yellow-600 bg-amber-50 px-1 border border-yellow-400 rounded-none mb-0.5 whitespace-nowrap animate-pulse">
+                      🎯 CRITICAL!
+                    </span>
+                  )}
+                  <span className="whitespace-nowrap font-serif font-black">{popup.text}</span>
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
 
           {/* 回答・判定中のクイックフラッシュエフェクト */}
